@@ -1,0 +1,119 @@
+@startuml
+
+' --- CẤU HÌNH GIAO DIỆN ---
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam handwritten false
+skinparam monochrome false
+
+' --- LỚP CONTROLLER ---
+package "Controller" {
+    class BookingController <<Controller>> {
+        - requestDate : Date
+        - currentUserIP : String
+        - sessionToken : String
+        + makeReservation(bookingInfo : BookingDTO) : boolean
+        + cancelReservation(bookingId : int) : boolean
+        + getBookingDetails(bookingId : int) : BookingDTO
+    }
+}
+
+' --- LỚP SERVICE ---
+package "Service" {
+    interface IBookingService <<Interface>> {
+        + checkAvailability(roomId : int, date : Date) : boolean
+        + calculateTotal(bookingId : int) : double
+        + applyDiscount(bookingId : int, code : String) : void
+    }
+
+    class BookingService <<Service>> {
+        - serviceConfig : Config
+        - discountRate : float
+        - logger : Logger
+        + checkAvailability(roomId : int, date : Date) : boolean
+        + calculateTotal(bookingId : int) : double
+        + applyDiscount(bookingId : int, code : String) : void
+    }
+}
+
+' --- LỚP REPOSITORY ---
+package "Repositories" {
+    interface IBookingRepository <<Repository>> {
+        - dbConnection : Connection
+        - tableName : String
+        - timeout : int
+        + save(booking : Booking) : boolean
+        + findById(id : int) : Booking
+        + delete(id : int) : void
+    }
+}
+
+' --- THỰC THỂ (ENTITIES) ---
+package "Entities" {
+    class Hotel <<Entity>> {
+        - hotelId : int
+        - name : String
+        - address : String
+        + getHotelInfo() : String
+        + updateInfo(info : String) : void
+        + checkOperatingStatus() : boolean
+    }
+
+    class Room <<Entity>> {
+        - roomId : int
+        - roomNumber : String
+        - floor : int
+        + cleanRoom() : void
+        + maintenance() : void
+        + getStatus() : String
+    }
+
+    class RoomType <<Entity>> {
+        - typeId : int
+        - typeName : String
+        - basePrice : double
+        + updatePrice(newPrice : double) : void
+        + getDescription() : String
+        + checkFeatures() : List
+    }
+
+    class Guest <<Entity>> {
+        - guestId : int
+        - fullName : String
+        - phoneNumber : String
+        + register() : boolean
+        + login() : boolean
+        + updateProfile() : void
+    }
+
+    class Booking <<Entity>> {
+        - bookingId : int
+        - checkInDate : Date
+        - checkOutDate : Date
+        + confirmBooking() : void
+        + cancelBooking() : void
+        + getDuration() : int
+    }
+}
+
+' --- ĐỊNH NGHĨA QUAN HỆ (RELATIONSHIPS) ---
+
+' 1. Realization (<|..): BookingService thực thi IBookingService
+IBookingService <|.. BookingService
+
+' 2. Dependency (..>): Controller phụ thuộc vào Service, Service phụ thuộc Repository
+BookingController ..> IBookingService
+BookingService ..> IBookingRepository
+
+' 3. Composition (*--): Hotel sở hữu Room (Hotel hủy -> Room hủy)
+Hotel "1" *-- "0..*" Room
+
+' 4. Aggregation (o--): Booking bao gồm Room (Room có thể tồn tại độc lập, nhưng Booking gom nhóm Room)
+' (Lưu ý: Dùng Aggregation ở đây để thỏa mãn yêu cầu đề bài về ký hiệu o--)
+Booking "0..*" o-- "1..*" Room
+
+' 5. Association (-->): Guest tạo Booking, Room thuộc về RoomType
+Guest "1" --> "0..*" Booking
+Room "0..*" --> "1" RoomType
+
+@enduml
